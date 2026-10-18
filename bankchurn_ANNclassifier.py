@@ -1,11 +1,14 @@
+# %%
 import pandas as pd
 import tensorflow as tf
 print(tf.__version__)
 
+# %%
 dataset = pd.read_csv('Churn_Modelling.csv')
 print(dataset.shape)
 dataset.head()
 
+# %%
 # Check for missing values
 print(dataset.isnull().sum().sum(), "missing values\n")
 
@@ -17,17 +20,19 @@ for col in ['Geography', 'Gender', 'IsActiveMember', 'NumOfProducts', 'HasCrCard
 numeric = ['CreditScore', 'Age', 'Tenure', 'Balance', 'EstimatedSalary', 'Exited']
 print(dataset[numeric].corr()['Exited'].sort_values())
 
+# %%
 X = dataset.iloc[:, 3:-1].values   # CreditScore through EstimatedSalary (10 features)
 y = dataset.iloc[:, -1].values     # Exited
 print(X[0])
 
-
+# %%
 from sklearn.preprocessing import LabelEncoder
 
 le = LabelEncoder()
 X[:, 2] = le.fit_transform(X[:, 2])
 print(X[0])
 
+# %%
 import numpy as np
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
@@ -37,6 +42,7 @@ ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [1])],
 X = np.array(ct.fit_transform(X))
 print(X[0])
 
+# %%
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
@@ -49,7 +55,7 @@ scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
-
+# %%
 tf.keras.utils.set_random_seed(29)
 
 ann = tf.keras.models.Sequential([
@@ -62,8 +68,10 @@ ann = tf.keras.models.Sequential([
 ann.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 ann.summary()
 
+# %%
 ann.fit(X_train, y_train, batch_size=32, epochs=100)
 
+# %%
 from sklearn.metrics import confusion_matrix, accuracy_score
 
 y_pred = ann.predict(X_test)
@@ -73,14 +81,31 @@ cm = confusion_matrix(y_test, y_pred)
 print(cm)
 print("Accuracy:", round(accuracy_score(y_test, y_pred), 4))
 
+# %%
 # Average profile: customers who stayed (0) vs. left (1)
 profile = dataset.groupby('Exited')[['CreditScore', 'Age', 'Tenure', 'Balance',
                                      'NumOfProducts', 'IsActiveMember', 'EstimatedSalary']].mean()
 profile.round(2)
 
+# %%
 cols = profile.columns
 effect = (profile.loc[1] - profile.loc[0]) / dataset[cols].std()
 effect.round(2).sort_values()
+
+# %%
+from scipy.stats import pearsonr, chi2_contingency
+
+print("Numeric features (Pearson correlation):")
+for col in ['CreditScore', 'Age', 'Tenure', 'Balance', 'EstimatedSalary']:
+    r, p = pearsonr(dataset[col], dataset['Exited'])
+    print(f"  {col:16s} r = {r:6.3f}   p = {p:.4f}")
+
+print("\nCategorical features (chi-square):")
+for col in ['Geography', 'Gender', 'IsActiveMember', 'NumOfProducts', 'HasCrCard']:
+    chi2, p, _, _ = chi2_contingency(pd.crosstab(dataset[col], dataset['Exited']))
+    print(f"  {col:16s} p = {p:.4f}")
+
+# %%
 
 
 
